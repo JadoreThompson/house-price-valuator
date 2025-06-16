@@ -69,36 +69,127 @@ async function fetchPOIs(
 }
 
 /**
+ *
+ * @param {PageWithCursor} page - Page of a sold home.
+ * @returns {Partial<ResidentialHomeFeatures> | null} Null if necessary element(s) weren't present. Otherwise
+ * returns values for {"propertyType", "bedrooms", "bathrooms", "receptions"}.
+ */
+async function scrapeFeatures(page: PageWithCursor) {
+  const FEATURE_QS = "._1pbf8i51";
+  const FEATURE_TITLES = [
+    "propertyType",
+    "bedrooms",
+    "bathrooms",
+    "receptions",
+  ] as const;
+
+  try {
+    const featuresParentContainer = await page.waitForSelector(FEATURE_QS);
+
+    const featureContainers = await featuresParentContainer!.$$(
+      "._1pbf8i56._194zg6t9"
+    );
+
+    const features = await Promise.all(
+      featureContainers.map((contianer) =>
+        contianer.evaluate((el) => el.textContent)
+      )
+    );
+
+    let data: any = {};
+
+    FEATURE_TITLES.forEach((val, ind) => {
+      data[val] = features[ind];
+    });
+
+    return data as Partial<ResidentialHomeFeatures>;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ *
+ * @param {PageWithCursor} page - Page of a sold home.
+ * @returns {Partial<ResidentialHomeFeatures> | null} Null if necessary element(s) weren't present. Otherwise
+ * returns values for {"tenure", "sqm", "epcRating"}.
+ */
+async function scrapeDetails(
+  page: PageWithCursor
+): Promise<Partial<ResidentialHomeFeatures> | null> {
+  const DETAILS_QS = ".agepcz0";
+  const DETAIL_TITLES = ["tenure", "sqm", "epcRating"] as const;
+
+  try {
+    const detailsParentContainer = await page.waitForSelector(DETAILS_QS);
+
+    const detailContainers = await detailsParentContainer!.$$(
+      ".jc64990.jc64994._194zg6tb"
+    );
+    const details = await Promise.all(
+      detailContainers.map((contianer) =>
+        contianer.evaluate((el) => el.textContent)
+      )
+    );
+
+    let data: any = {};
+
+    DETAIL_TITLES.forEach((val, ind) => {
+      data[val] = details[ind];
+    });
+
+    return data as Partial<ResidentialHomeFeatures>;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Scrapes a single property page to extract address and POIs.
  *
  * @param {PageWithCursor} page - Puppeteer page to scrape.
  */
-async function scrapePage(page: PageWithCursor) {
+async function scrapePage(
+  page: PageWithCursor
+): Promise<ResidentialHome | null> {
   const ADDRESS_QS = "._194zg6td._194zg6t6";
-  const addressEl = await page.waitForSelector(ADDRESS_QS);
 
-  if (addressEl) {
-    const addr = await addressEl.evaluate((el) => el.textContent);
-    let addrObj: Address;
+  let pageData: any = {};
 
-    if (addr) {
-      const [address, city, postcode] = addr.split(",");
-
-      addrObj = {
-        address: address.toLowerCase(),
-        city: city.toLowerCase(),
-        postcode: postcode.toLowerCase(),
-        ...(await getLatLng(postcode)),
-      };
-    }
-
-    const parts: string[] = await page.evaluate(() =>
-      window.location.pathname.split("/")
-    );
-    const uprn = parts[parts.length - 2];
-
-    const pois = await fetchPOIs(page, uprn);
+  const details = await scrapeDetails(page);
+  if (details) {
+    const features = await scrapeFeatures(page);
+    pageData["features"] = {
+      ...details,
+      ...features,
+    } as ResidentialHomeFeatures;
   }
+
+  const addressEl = await page.waitForSelector(ADDRESS_QS);
+  if (!addressEl) return null;
+
+  const addr = (await addressEl.evaluate((el) => el.textContent))!;
+  const [address, city, postcode] = addr.split(",");
+
+  const addrObj: Address = {
+    address: address.toLowerCase(),
+    city: city.toLowerCase(),
+    postcode: postcode.toLowerCase(),
+    ...(await getLatLng(postcode)),
+  };
+
+  const pathParts: string[] = await page.evaluate(() =>
+    window.location.pathname.split("/")
+  );
+
+  const uprn: string = pathParts[pathParts.length - 2];
+
+  const pois: PointOfInterst[] | null = await fetchPOIs(page, uprn);
+
+  pageData["nearbyPOIs"] = pois;
+  pageData["address"] = addrObj;
+
+  return pageData as ResidentialHome;
 }
 
 /**
@@ -109,22 +200,46 @@ async function scrapePage(page: PageWithCursor) {
  * @returns {Promise<void>}
  */
 async function scrapePages(browser: any, page: PageWithCursor): Promise<void> {
-  const parentContainer = await page.waitForSelector(
-    '[data-testid="result-item"]'
-  );
-  const cards = await parentContainer?.$$("div");
+  while (true) {
+    const cards = await page.$$("[data-testid='result-item']");
 
-  for (const card of cards!) {
-    const anchors = await card.$$("a");
+    for (const card of cards!) {
+      const soldDateElement = await card.$("._194zg6t7 time");
+      const soldDateStr = await soldDateElement?.evaluate(
+        (el) => el.textContent
+      );
+      const soldDate = new Date(
+        (new Date(soldDateStr!).getTime() / 1000 + 60 * 60 * 24) * 1000
+      );
 
-    if (!anchors.length) continue;
+      const soldPriceElement = await card.$$("._1i39aq49 ._194zg6t7");
+      const soldPriceStr = await soldPriceElement[1]!.evaluate(
+        (el) => el.textContent
+      );
+      const soldPrice = Number.parseInt(
+        soldPriceStr!.replace("£", "").replace(/,/g, "")
+      );
 
-    const anchor = anchors[0];
-    const href = await anchor.evaluate((el) => el.getAttribute("href"));
+      const anchors = await card.$$("a");
 
-    const page_ = await browser.newPage();
-    await page_.goto(ZOOPLA_BASE_URL! + href);
-    await scrapePage(page_);
+      if (!anchors.length) continue;
+
+      const anchor = anchors[0];
+      const href = await anchor.evaluate((el) => el.getAttribute("href"));
+
+      const page_ = await browser.newPage();
+      await page_.goto(ZOOPLA_BASE_URL! + href);
+
+      let data: ResidentialHome | null = await scrapePage(page_);
+
+      if (data) {
+        data.soldDate = soldDate;
+        data.priceStr = soldPriceStr!;
+        data.price = soldPrice;
+      }
+
+      await page.evaluate(() => window.scrollBy(0, 250));
+    }
   }
 }
 
