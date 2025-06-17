@@ -21,7 +21,7 @@ function parseCrimeCategory(value: string): keyof Crime {
     "theft-from-the-person": "theft",
     shoplifting: "theft",
     robbery: "robbery",
-    "bicycle-theft": "bicycle",
+    "bicycle-theft": "theft",
     "possession-of-weapons": "weaponPossession",
     "other-crime": "other",
   };
