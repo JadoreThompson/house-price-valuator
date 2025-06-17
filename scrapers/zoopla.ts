@@ -39,7 +39,6 @@ class ZooplaScraper {
     await acceptCookieBtn.click();
 
     while (true) {
-      console.log(currentPage.url());
       await this.scrapePages(browser, currentPage);
 
       try {
@@ -258,7 +257,6 @@ class ZooplaScraper {
    */
   private async scrapePages(browser: any, page: PageWithCursor): Promise<void> {
     const cards = await page.$$("[data-testid='result-item']");
-    console.log(cards.length);
 
     for (const card of cards!) {
       const soldDateElement = await card.$("._194zg6t7 time");
@@ -299,10 +297,9 @@ class ZooplaScraper {
           data.soldDate
         );
 
-        fs.writeFileSync(
-          path.join(this.folder, `${this.name}-${Date.now()}.json`),
-          JSON.stringify(data)
-        );
+        const fname = path.join(this.folder, `${this.name}-${Date.now()}-s0.json`);
+        fs.writeFileSync(fname, JSON.stringify(data));
+        fs.renameSync(fname, fname.replace("s0", "s1"));
       }
 
       await page_.close();

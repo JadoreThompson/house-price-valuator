@@ -6,7 +6,7 @@ dotenv.config();
 export const SCRAPED_DATA_FOLDER = path.join(
   path.dirname(path.dirname(path.dirname(__filename))),
   "datasets",
-  "raw-scraped-data"
+  "raw-data"
 );
 export const LOCATION_API_KEY = process.env.LOCATION_API_KEY;
 export const CRIME_RATE_ENDPOINT = process.env.CRIME_RATE;
