@@ -1,5 +1,5 @@
 interface Crime {
-    total: number; // Total reported crimes last 12m.
+    // total: number; // Total reported crimes last 12m.
     violence: number;
     antiSocial: number;
     vehicle: number;

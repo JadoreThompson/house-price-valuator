@@ -7,6 +7,8 @@ export const ZOOPLA_BASE_URL = process.env.ZOOPLA;
 export const ZOOPLA_POI_ENDPOINT = process.env.ZOOPLA_POI_ENDPOINT;
 export const ZOOPLA_BEARER = process.env.ZOOPLA_BEARER;
 export const ZOOPLA_API_KEY = process.env.ZOOPLA_API_KEY;
-export const ZOOPLA_FLOOD_RISK_URL = process.env.ZOOPLA_FLOOD_RISK;
+export const ZOOPLA_FLOOD_RISK_ENDPOINT = process.env.ZOOPLA_FLOOD_RISK;
+export const ZOOPLA_CRIME_ENDPOINT = process.env.ZOOPLA_CRIME;
 
 export const LOCATION_API_KEY = process.env.LOCATION_API_KEY;
+export const CRIME_RATE_ENDPOINT = process.env.CRIME_RATE;

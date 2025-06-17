@@ -17,12 +17,12 @@ export class LocatioNotFound extends Error {}
  * and applies a basic rate limit.
  *
  * @param {string} postcode - The postcode to geocode.
- * @returns {Promise<{ latitude: number; longitude: number }>} An object containing latitude and longitude.
+ * @returns {Promise<{ lat: number; lng: number }>} An object containing latitude and longitude.
  * @throws {LocationNotFoundError} If no location is found for the given postcode.
  */
 export async function getLatLng(
   postcode: string
-): Promise<{ latitude: number; longitude: number }> {
+): Promise<{ lat: number; lng: number }> {
   const sleepTime: number = Math.max(
     0,
     lastLatLngCall + LAT_LNG_RATE_LIMIT - Date.now()
@@ -38,8 +38,8 @@ export async function getLatLng(
     const { latitude, longitude } = res[0];
     lastLatLngCall = Date.now();
     return {
-      latitude: latitude as number,
-      longitude: longitude as number,
+      lat: latitude as number,
+      lng: longitude as number,
     };
   }
 
