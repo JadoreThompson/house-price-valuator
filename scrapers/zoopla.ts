@@ -8,7 +8,7 @@ import {
   ZOOPLA_POI_ENDPOINT,
 } from "./config";
 import { getLatLng } from "./utils/geoUtils";
-import { fetchCrimeRate } from "./utils/utils";
+import { fetchCrimeRate, sleep } from "./utils/utils";
 
 class ZooplaScraper {
   private readonly name: string;
@@ -338,8 +338,10 @@ class ZooplaScraper {
     const cards = await page.$$("[data-testid='result-item']");
 
     for (const card of cards) {
+      await sleep(Math.round(Math.random() * 10));
       await this.scrapeCard(card, browser);
       await page.evaluate(() => window.scrollBy(0, 250));
+      await sleep(Math.round(Math.random() * 5));
     }
   }
 }
