@@ -201,6 +201,21 @@ class ZooplaScraper {
   }
 
   /**
+   * Persists object to the filesystem using its UPRN as the filename.
+   * If a file with the same UPRN already exists, the function exits without writing.
+   * After writing, the file is renamed from `s0` to `s1` to signal it's ready for reading.
+   * @param {ResidentialHome} data - The residential property data to be saved.
+   */
+  private persist(data: ResidentialHome): void {
+    const fpath = path.join(this.folder, `${data.uprn}-s0.json`);
+
+    if (fs.existsSync(fpath)) return;
+
+    fs.writeFileSync(fpath, JSON.stringify(data));
+    fs.renameSync(fpath, fpath.replace("s0", "s1"));
+  }
+
+  /**
    * Scrapes a single property page to extract address and POIs.
    * @param {PageWithCursor} page - Puppeteer page to scrape.
    */
@@ -224,14 +239,15 @@ class ZooplaScraper {
     if (!addressEl) return null;
 
     const addr = (await addressEl.evaluate((el) => el.textContent))!;
-    const [address, city, postcode] = addr.split(",");
+    const [, , postcode] = addr.split(",");
+    // // console.log(address, city, postcode);
 
     const addrObj: Address = {
-      address: address.toLowerCase(),
-      city: city.toLowerCase(),
-      postcode: postcode.toLowerCase(),
+      address: addr,
       ...(await getLatLng(postcode)),
     };
+
+    // console.log(addrObj);
 
     const pathParts: string[] = await page.evaluate(() =>
       window.location.pathname.split("/")
@@ -248,6 +264,58 @@ class ZooplaScraper {
     return pageData as ResidentialHome;
   }
 
+  private async scrapeCard(card: any, browser: any): Promise<void> {
+    const soldDateElement = await card.$("._194zg6t7 time");
+    const soldDateStr = await soldDateElement?.evaluate(
+      (el: any) => el.textContent
+    );
+    if (!soldDateStr) return;
+
+    const soldDate = new Date(
+      (new Date(soldDateStr).getTime() / 1000 + 60 * 60 * 24) * 1000
+    );
+
+    const soldPriceElement = await card.$$("._1i39aq49 ._194zg6t7");
+    if (soldPriceElement.length < 2) return;
+
+    const soldPriceStr = await soldPriceElement[1].evaluate(
+      (el: any) => el.textContent
+    );
+    if (!soldPriceStr) return;
+
+    const soldPrice = Number.parseInt(
+      soldPriceStr.replace("£", "").replace(/,/g, "")
+    );
+
+    const anchors = await card.$$("a");
+    if (!anchors.length) return;
+
+    const href = await anchors[0].evaluate((el: any) =>
+      el.getAttribute("href")
+    );
+    if (!href) return;
+
+    const page_: PageWithCursor = await browser.newPage();
+    await page_.goto(ZOOPLA_BASE_URL! + href);
+
+    const data: ResidentialHome | null = await this.scrapePage(page_);
+
+    if (data) {
+      data.soldDate = soldDate;
+      data.priceStr = soldPriceStr;
+      data.price = soldPrice;
+      data.crime = await fetchCrimeRate(
+        data.address.lat,
+        data.address.lng,
+        data.soldDate
+      );
+
+      this.persist(data);
+    }
+
+    await page_.close();
+  }
+
   /**
    * Iterates over property listings and scrapes each individual page.
    *
@@ -258,51 +326,8 @@ class ZooplaScraper {
   private async scrapePages(browser: any, page: PageWithCursor): Promise<void> {
     const cards = await page.$$("[data-testid='result-item']");
 
-    for (const card of cards!) {
-      const soldDateElement = await card.$("._194zg6t7 time");
-      const soldDateStr = await soldDateElement?.evaluate(
-        (el) => el.textContent
-      );
-      const soldDate = new Date(
-        (new Date(soldDateStr!).getTime() / 1000 + 60 * 60 * 24) * 1000
-      );
-
-      const soldPriceElement = await card.$$("._1i39aq49 ._194zg6t7");
-      const soldPriceStr = await soldPriceElement[1]!.evaluate(
-        (el) => el.textContent
-      );
-      const soldPrice = Number.parseInt(
-        soldPriceStr!.replace("£", "").replace(/,/g, "")
-      );
-
-      const anchors = await card.$$("a");
-
-      if (!anchors.length) continue;
-
-      const anchor = anchors[0];
-      const href = await anchor.evaluate((el) => el.getAttribute("href"));
-
-      const page_: PageWithCursor = await browser.newPage();
-      await page_.goto(ZOOPLA_BASE_URL! + href);
-
-      let data: ResidentialHome | null = await this.scrapePage(page_);
-
-      if (data) {
-        data.soldDate = soldDate;
-        data.priceStr = soldPriceStr!;
-        data.price = soldPrice;
-        data.crime = await fetchCrimeRate(
-          data.address.lat,
-          data.address.lng,
-          data.soldDate
-        );
-
-        const fname = path.join(this.folder, `${this.name}-${Date.now()}-s0.json`);
-        fs.writeFileSync(fname, JSON.stringify(data));
-        fs.renameSync(fname, fname.replace("s0", "s1"));
-      }
-
-      await page_.close();
+    for (const card of cards) {
+      await this.scrapeCard(card, browser);
       await page.evaluate(() => window.scrollBy(0, 250));
     }
   }

@@ -1,6 +1,7 @@
 interface ResidentialHome {
   uprn: string;
   address: Address;
+  // address: string;
 
   soldDate: Date;
   priceStr: string;
