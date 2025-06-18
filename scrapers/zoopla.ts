@@ -153,7 +153,7 @@ class ZooplaScraper {
       );
 
       let data: any = {};
-      
+
       features.forEach((feat) => {
         if (feat?.includes("bed")) {
           data["bedrooms"] = feat;
@@ -213,6 +213,10 @@ class ZooplaScraper {
     }
   }
 
+  private exists(uprn: string): boolean {
+    return fs.existsSync(path.join(this.folder, `${uprn}-s1.json`));
+  }
+
   /**
    * Persists object to the filesystem using its UPRN as the filename.
    * If a file with the same UPRN already exists, the function exits without writing.
@@ -220,10 +224,12 @@ class ZooplaScraper {
    * @param {ResidentialHome} data - The residential property data to be saved.
    */
   private persist(data: ResidentialHome): void {
-    const stage0FPath = path.join(this.folder, `${data.uprn}-s0.json`);
-    const stage1FPath = stage0FPath.replace("s0", "s1");
+    const uprn = data.uprn;
 
-    if (fs.existsSync(stage1FPath)) return;
+    if (this.exists(uprn)) return;
+
+    const stage0FPath = path.join(this.folder, `${uprn}-s0.json`);
+    const stage1FPath = stage0FPath.replace("s0", "s1");
 
     fs.writeFileSync(stage0FPath, JSON.stringify(data));
     fs.renameSync(stage0FPath, stage1FPath);
@@ -276,6 +282,17 @@ class ZooplaScraper {
   }
 
   private async scrapeCard(card: any, browser: any): Promise<void> {
+    const anchors = await card.$$("a");
+    if (!anchors.length) return;
+
+    const href = await anchors[0].evaluate((el: any) =>
+      el.getAttribute("href")
+    );
+
+    const pathParts: string[] = href.split("/");
+    const uprn: string = pathParts[pathParts.length - 2];
+    if (!href || this.exists(uprn)) return;
+
     const soldDateElement = await card.$("._194zg6t7 time");
     const soldDateStr = await soldDateElement?.evaluate(
       (el: any) => el.textContent
@@ -297,14 +314,6 @@ class ZooplaScraper {
     const soldPrice = Number.parseInt(
       soldPriceStr.replace("£", "").replace(/,/g, "")
     );
-
-    const anchors = await card.$$("a");
-    if (!anchors.length) return;
-
-    const href = await anchors[0].evaluate((el: any) =>
-      el.getAttribute("href")
-    );
-    if (!href) return;
 
     const page_: PageWithCursor = await browser.newPage();
     await page_.goto(ZOOPLA_BASE_URL! + href);
@@ -338,10 +347,12 @@ class ZooplaScraper {
     const cards = await page.$$("[data-testid='result-item']");
 
     for (const card of cards) {
-      await sleep(Math.round(Math.random() * 10));
+      const sleepDuration = Math.round(Math.random() * 1000);
+      await sleep(sleepDuration);
       await this.scrapeCard(card, browser);
+      await sleep(sleepDuration);
       await page.evaluate(() => window.scrollBy(0, 250));
-      await sleep(Math.round(Math.random() * 5));
+      await sleep(sleepDuration);
     }
   }
 }

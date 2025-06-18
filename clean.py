@@ -1,10 +1,11 @@
 import asyncio
 import json
 import os
+
 from watchdog.events import FileMovedEvent, DirMovedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-from config import RAW_DATASETS_FOLDER
-from utils import flatten_zoopla_data, to_lowercase
+from config import CLEANED_ZOOPLA_FOLDER, RAW_DATASETS_FOLDER
+from utils import flatten_zoopla_data, parse_zoopla_data, strip_values
 
 
 class NewZooplaData(FileSystemEventHandler):
@@ -22,10 +23,23 @@ class NewZooplaData(FileSystemEventHandler):
 async def clean(queue: asyncio.Queue) -> None:
     while True:
         path = await queue.get()
-        data = json.load(open(path, "rb"))
-        data = to_lowercase(data)
+
+        i = 0
+        while True:
+            try:
+                data = json.load(open(path, "rb"))
+                break
+            except PermissionError:
+                await asyncio.sleep(2**i)
+
         data = flatten_zoopla_data(data)
-        print(json.dumps(data, indent=4))
+        parsed_data = parse_zoopla_data(data)
+        stripped_data = strip_values(parsed_data)
+
+        json.dump(
+            stripped_data,
+            open(os.path.join(CLEANED_ZOOPLA_FOLDER, os.path.basename(path)), "w"),
+        )
 
 
 async def watch_folder(
@@ -57,7 +71,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-    # data = json.load(open(r"C:\Users\ADMIN\myprojects\house-price-valuator\datasets\raw-data\zoopla\zoopla-1750203709807-s1.json", "rb"))
-    # data = to_lowercase(data)
-    # data = flatten_zoopla_data(data)
-    # print(json.dumps(data, indent=4))
