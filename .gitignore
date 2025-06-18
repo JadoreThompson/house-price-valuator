@@ -6,4 +6,4 @@ __pycache__
 .env
 
 datasets
-notes.txt
+zoopla-url-cache.json

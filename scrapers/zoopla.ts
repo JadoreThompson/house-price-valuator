@@ -26,6 +26,11 @@ class ZooplaScraper {
       fs.mkdirSync(this.folder, { recursive: true });
     }
 
+    const cachedUrlPath = `${this.name}-url-cache.json`;
+    const url = fs.existsSync(cachedUrlPath)
+      ? JSON.parse(fs.readFileSync(cachedUrlPath, "utf-8")).url
+      : this.url;
+
     const { page, browser } = await connect({
       headless: false,
       turnstile: true,
@@ -33,13 +38,13 @@ class ZooplaScraper {
 
     let currentPage = page;
 
-    await page.goto(this.url);
+    await page.goto(url);
 
     const acceptCookieBtn = await page.locator("text/Accept all");
     await acceptCookieBtn.click();
 
     while (true) {
-      await this.scrapePages(browser, currentPage);
+      await this.scrapeCards(browser, currentPage);
 
       try {
         const oldPage = currentPage;
@@ -58,6 +63,8 @@ class ZooplaScraper {
         currentPage = pages[pages.length - 1] as PageWithCursor;
         await currentPage.bringToFront();
         await oldPage.close();
+
+        fs.writeFileSync(cachedUrlPath, JSON.stringify({url: currentPage.url()}));
       } catch (error) {
         break;
       }
@@ -132,12 +139,6 @@ class ZooplaScraper {
    */
   private async scrapeFeatures(page: PageWithCursor) {
     const FEATURE_QS = "._1pbf8i51";
-    const FEATURE_TITLES = [
-      "propertyType",
-      "bedrooms",
-      "bathrooms",
-      "receptions",
-    ] as const;
 
     try {
       const featuresParentContainer = await page.waitForSelector(FEATURE_QS);
@@ -343,7 +344,7 @@ class ZooplaScraper {
    * @param {PageWithCursor} page - Puppeteer page containing property listing.
    * @returns {Promise<void>}
    */
-  private async scrapePages(browser: any, page: PageWithCursor): Promise<void> {
+  private async scrapeCards(browser: any, page: PageWithCursor): Promise<void> {
     const cards = await page.$$("[data-testid='result-item']");
 
     for (const card of cards) {
@@ -352,7 +353,6 @@ class ZooplaScraper {
       await this.scrapeCard(card, browser);
       await sleep(sleepDuration);
       await page.evaluate(() => window.scrollBy(0, 250));
-      await sleep(sleepDuration);
     }
   }
 }
