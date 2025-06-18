@@ -153,9 +153,17 @@ class ZooplaScraper {
       );
 
       let data: any = {};
-
-      FEATURE_TITLES.forEach((val, ind) => {
-        data[val] = features[ind];
+      
+      features.forEach((feat) => {
+        if (feat?.includes("bed")) {
+          data["bedrooms"] = feat;
+        } else if (feat?.includes("bath")) {
+          data["bathrooms"] = feat;
+        } else if (feat?.includes("reception")) {
+          data["receptions"] = feat;
+        } else {
+          data["propertyType"] = feat;
+        }
       });
 
       return data as Partial<ResidentialHomeFeatures>;
@@ -174,7 +182,6 @@ class ZooplaScraper {
     page: PageWithCursor
   ): Promise<Partial<ResidentialHomeFeatures> | null> {
     const DETAILS_QS = ".agepcz0";
-    const DETAIL_TITLES = ["tenure", "sqm", "epcRating"] as const;
 
     try {
       const detailsParentContainer = await page.waitForSelector(DETAILS_QS);
@@ -183,15 +190,21 @@ class ZooplaScraper {
         ".jc64990.jc64994._194zg6tb"
       );
       const details = await Promise.all(
-        detailContainers.map((contianer) =>
-          contianer.evaluate((el) => el.textContent)
+        detailContainers.map((container) =>
+          container.evaluate((el) => el.textContent)
         )
       );
 
       let data: any = {};
 
-      DETAIL_TITLES.forEach((val, ind) => {
-        data[val] = details[ind];
+      details.forEach((val) => {
+        if (val?.includes("sqm")) {
+          data["sqm"] = val;
+        } else if (val?.includes("EPC")) {
+          data["epcRating"] = val;
+        } else {
+          data["tenure"] = val;
+        }
       });
 
       return data as Partial<ResidentialHomeFeatures>;
@@ -207,12 +220,13 @@ class ZooplaScraper {
    * @param {ResidentialHome} data - The residential property data to be saved.
    */
   private persist(data: ResidentialHome): void {
-    const fpath = path.join(this.folder, `${data.uprn}-s0.json`);
+    const stage0FPath = path.join(this.folder, `${data.uprn}-s0.json`);
+    const stage1FPath = stage0FPath.replace("s0", "s1");
 
-    if (fs.existsSync(fpath)) return;
+    if (fs.existsSync(stage1FPath)) return;
 
-    fs.writeFileSync(fpath, JSON.stringify(data));
-    fs.renameSync(fpath, fpath.replace("s0", "s1"));
+    fs.writeFileSync(stage0FPath, JSON.stringify(data));
+    fs.renameSync(stage0FPath, stage1FPath);
   }
 
   /**
@@ -240,14 +254,11 @@ class ZooplaScraper {
 
     const addr = (await addressEl.evaluate((el) => el.textContent))!;
     const [, , postcode] = addr.split(",");
-    // // console.log(address, city, postcode);
 
     const addrObj: Address = {
       address: addr,
       ...(await getLatLng(postcode)),
     };
-
-    // console.log(addrObj);
 
     const pathParts: string[] = await page.evaluate(() =>
       window.location.pathname.split("/")

@@ -1,9 +1,9 @@
 interface ResidentialHomeFeatures {
-  bedrooms: number;
-  bathrooms: number;
-  receptions: number;
+  bedrooms: string;
+  bathrooms: string;
+  receptions?: string;
   tenure: string; // e.g. leasehold, freehold
-  sqm: number;
+  sqm: string;
   propertyType: string; // e.g. flat, detached, semi-detached
   epcRating: string;
 }
