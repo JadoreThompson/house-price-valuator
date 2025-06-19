@@ -45,6 +45,7 @@ class ZooplaScraper {
 
     while (true) {
       await this.scrapeCards(browser, currentPage);
+      await sleep(Math.round(Math.random() * 5000));
 
       try {
         const oldPage = currentPage;
@@ -66,6 +67,7 @@ class ZooplaScraper {
 
         fs.writeFileSync(cachedUrlPath, JSON.stringify({url: currentPage.url()}));
       } catch (error) {
+        console.error("Error handling page switch", error, (error as Error).message);
         break;
       }
     }
@@ -255,31 +257,34 @@ class ZooplaScraper {
         ...features,
       } as ResidentialHomeFeatures;
     }
-
-    const addressEl = await page.waitForSelector(ADDRESS_QS);
-    if (!addressEl) return null;
-
-    const addr = (await addressEl.evaluate((el) => el.textContent))!;
-    const [, , postcode] = addr.split(",");
-
-    const addrObj: Address = {
-      address: addr,
-      ...(await getLatLng(postcode)),
-    };
-
-    const pathParts: string[] = await page.evaluate(() =>
-      window.location.pathname.split("/")
-    );
-
-    const uprn: string = pathParts[pathParts.length - 2];
-
-    const pois: PointOfInterst[] | null = await this.fetchPOIs(page, uprn);
-
-    pageData["uprn"] = uprn;
-    pageData["address"] = addrObj;
-    pageData["nearbyPOIs"] = pois;
-
-    return pageData as ResidentialHome;
+    
+    try {
+      const addressEl = (await page.waitForSelector(ADDRESS_QS))!;
+      const addr = (await addressEl.evaluate((el) => el.textContent))!;
+      const [, , postcode] = addr.split(",");
+  
+      const addrObj: Address = {
+        address: addr,
+        ...(await getLatLng(postcode)),
+      };
+  
+      const pathParts: string[] = await page.evaluate(() =>
+        window.location.pathname.split("/")
+      );
+  
+      const uprn: string = pathParts[pathParts.length - 2];
+  
+      const pois: PointOfInterst[] | null = await this.fetchPOIs(page, uprn);
+  
+      pageData["uprn"] = uprn;
+      pageData["address"] = addrObj;
+      pageData["nearbyPOIs"] = pois;
+  
+      return pageData as ResidentialHome;
+    } catch(error) {
+      console.log("[scrapePage] ", (error as Error).message);
+      return null;
+    }
   }
 
   private async scrapeCard(card: any, browser: any): Promise<void> {
@@ -334,7 +339,9 @@ class ZooplaScraper {
       this.persist(data);
     }
 
+    console.log(1);
     await page_.close();
+    console.log(2);
   }
 
   /**
