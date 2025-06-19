@@ -1,3 +1,9 @@
+import json
+import os
+import pandas as pd
+from config import CLEANED_ZOOPLA_FOLDER
+
+
 def lowercase_values(obj: dict) -> dict:
     for k, v in obj.items():
         if isinstance(v, str):
@@ -20,6 +26,27 @@ def strip_values(obj: dict) -> dict:
     return obj
 
 
+def flatten_pois(pois: list[dict]) -> dict:
+    schools = [
+        p for p in pois if "category" in p and "school" in (p["category"] or "").lower()
+    ]
+    all_distances = [p["distanceMiles"] for p in pois]
+    school_distances = [p["distanceMiles"] for p in schools]
+
+    closest_school = min(schools, key=lambda p: p["distanceMiles"], default={})
+    closest_poi = min(pois, key=lambda p: p["distanceMiles"])
+
+    return {
+        "num_pois": len(pois),
+        "num_schools": len(schools),
+        "avg_distance_all": sum(all_distances) / len(all_distances),
+        "min_distance_school": min(school_distances) if school_distances else None,
+        "closest_school_gender": closest_school.get("gender"),
+        "closest_school_name": closest_school.get("name"),
+        "closest_poi_name": closest_poi.get("name"),
+    }
+
+
 def flatten_zoopla_data(data: dict) -> dict:
     features = data.get("features", {})
     address = data.get("address", {})
@@ -36,12 +63,14 @@ def flatten_zoopla_data(data: dict) -> dict:
         "property_type": features.get("propertyType"),
         "bedrooms": features.get("bedrooms"),
         "bathrooms": features.get("bathrooms"),
+        "receptions": features.get("receptions", "0 receptions"),
         "address": address.get("address"),
         "city": address.get("city"),
         "postcode": address.get("postcode"),
         "lat": address.get("lat"),
         "lng": address.get("lng"),
         **{f"crime_{k}": v for k, v in crime.items()},
+        **flatten_pois(data.get("nearbyPOIs", [])),
     }
 
 
@@ -70,9 +99,16 @@ def parse_zoopla_data(data: dict) -> dict:
     )
 
     bathrooms = parsed["bathrooms"]
-    parsed["batrooms"] = (
+    parsed["bathrooms"] = (
         int(bathrooms.replace("baths", "").replace("bath", "").strip())
         if bathrooms is not None
+        else None
+    )
+
+    receptions = parsed["receptions"]
+    parsed["receptions"] = (
+        int(receptions.replace("receptions", "").replace("reception", "").strip())
+        if receptions is not None
         else None
     )
 
@@ -101,3 +137,14 @@ def parse_zoopla_data(data: dict) -> dict:
         )
 
     return parsed
+
+
+def build_df() -> pd.DataFrame:
+    jsons: list[dict] = []
+    for fname in os.listdir(CLEANED_ZOOPLA_FOLDER):
+        jsons.append(json.load(open(os.path.join(CLEANED_ZOOPLA_FOLDER, fname), "rb")))
+
+    return pd.DataFrame(jsons)
+
+
+# build_df().to_csv("./datasets/cleaned.csv", index=False)

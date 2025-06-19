@@ -5,7 +5,7 @@ import os
 from watchdog.events import FileMovedEvent, DirMovedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from config import CLEANED_ZOOPLA_FOLDER, RAW_DATASETS_FOLDER
-from utils import flatten_zoopla_data, parse_zoopla_data, strip_values
+from .utils import flatten_zoopla_data, parse_zoopla_data, strip_values
 
 
 class NewZooplaData(FileSystemEventHandler):
@@ -20,7 +20,13 @@ class NewZooplaData(FileSystemEventHandler):
             )
 
 
-async def clean(queue: asyncio.Queue) -> None:
+def clean_zoopla(data: dict) -> dict:
+    data = flatten_zoopla_data(data)
+    parsed_data = parse_zoopla_data(data)
+    return strip_values(parsed_data)
+
+
+async def clean_path(queue: asyncio.Queue) -> None:
     while True:
         path = await queue.get()
 
@@ -32,14 +38,11 @@ async def clean(queue: asyncio.Queue) -> None:
             except PermissionError:
                 await asyncio.sleep(2**i)
 
-        data = flatten_zoopla_data(data)
-        parsed_data = parse_zoopla_data(data)
-        stripped_data = strip_values(parsed_data)
-
-        json.dump(
-            stripped_data,
-            open(os.path.join(CLEANED_ZOOPLA_FOLDER, os.path.basename(path)), "w"),
-        )
+            cleaned_data = clean_zoopla(data)
+            json.dump(
+                cleaned_data,
+                open(os.path.join(CLEANED_ZOOPLA_FOLDER, os.path.basename(path)), "w"),
+            )
 
 
 async def watch_folder(
@@ -64,10 +67,25 @@ async def main() -> None:
     dirname = os.path.join(RAW_DATASETS_FOLDER, "zoopla")
 
     watcher_task = asyncio.create_task(watch_folder(dirname, queue, loop))
-    cleaner_task = asyncio.create_task(clean(queue))
+    cleaner_task = asyncio.create_task(clean_path(queue))
 
     await asyncio.gather(watcher_task, cleaner_task)
 
 
+def _temp():
+    folder = os.path.join(RAW_DATASETS_FOLDER, "zoopla")
+    fnams = os.listdir(folder)
+
+    for fname in fnams:
+        clean_path = os.path.join(CLEANED_ZOOPLA_FOLDER, fname)
+
+        json.dump(
+            clean_zoopla(json.load(open(os.path.join(folder, fname), "rb"))),
+            open(clean_path, "w"),
+        )
+        print("cleaned ", fname)
+
+
 if __name__ == "__main__":
     asyncio.run(main())
+    # _temp()
