@@ -16,33 +16,63 @@ def append_sqm_per_room(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def append_city_avg_price(df: pd.DataFrame) -> pd.DataFrame:
-    city_avg_price_s = df.groupby("city")["price"].mean()
-    city_avg_price_s.name = "city_average_price"
-    df = df.merge(city_avg_price_s, on=["city"])
+def append_city_avg_price(df: pd.DataFrame, expanding: bool = False) -> pd.DataFrame:
+    df = df.copy()
+
+    if expanding:
+        df = df.sort_values(["sold_year", "sold_month"])
+        df["city_average_price"] = (
+            df.groupby("city")["price"]
+            .expanding()
+            .mean()
+            .reset_index(level=0, drop=True)
+        )
+    else:
+        city_avg_price_s = df.groupby("city")["price"].mean()
+        city_avg_price_s.name = "city_average_price"
+        df = df.merge(city_avg_price_s, on="city")
     return df
 
 
-def append_city_avg_price_per_sqm(df: pd.DataFrame):
+def append_city_avg_price_per_sqm(
+    df: pd.DataFrame, expanding: bool = False
+) -> pd.DataFrame:
     df = df.copy()
     df["price_per_sqm"] = df["price"] / df["sqm"]
-    city_avg_price_per_sqm = df.groupby("city")["price_per_sqm"].mean()
-    city_avg_price_per_sqm.name = "city_avg_price_per_sqm"
-    df = df.merge(city_avg_price_per_sqm, on=["city"])
+
+    if expanding:
+        df = df.sort_values(["city", "sold_year", "sold_month"])
+        df["city_avg_price_per_sqm"] = (
+            df.groupby("city")["price_per_sqm"]
+            .expanding()
+            .mean()
+            .reset_index(level=0, drop=True)
+        )
+    else:
+        city_avg_price_per_sqm = df.groupby("city")["price_per_sqm"].mean()
+        city_avg_price_per_sqm.name = "city_avg_price_per_sqm"
+        df = df.merge(city_avg_price_per_sqm, on="city")
+
     return df
 
 
-def append_avg_price(df: pd.DataFrame) -> pd.DataFrame:
+def append_avg_price(df: pd.DataFrame, expanding: bool = False) -> pd.DataFrame:
     df = df.copy()
     df = df.sort_values(["sold_year", "sold_month"])
-    df["avg_price"] = df["price"].expanding().mean()
+
+    if expanding:
+        df["avg_price"] = df["price"].expanding().mean()
+    else:
+        df["avg_price"] = df["price"].mean()
+
     return df
 
 
-def append_price_std(df: pd.DataFrame) -> pd.DataFrame:
-    df = append_avg_price(df)
+def append_price_std(df: pd.DataFrame, expanding: bool = False) -> pd.DataFrame:
+    if "avg_price" not in df:
+        df = append_avg_price(df, expanding=expanding)
     df["diff"] = (df["price"] - df["avg_price"]) ** 2
-    df["std"] = math.sqrt(sum(df["diff"]) / (len(df) - 1))
+    df["std"] = math.sqrt(df["diff"].sum() / (len(df) - 1))
     return df.drop(columns=["diff", "std"])
 
 

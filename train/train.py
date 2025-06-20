@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import pandas as pd
 import torch
@@ -11,9 +12,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from .features import (
     append_avg_price,
     append_city_avg_price,
+    append_city_avg_price_per_sqm,
     append_price_std,
     append_sqm_per_bed,
-    append_city_avg_price_per_sqm,
     append_closest_school_gender_dummies,
     append_epc_rating_dummies,
     append_property_type_dummies,
@@ -109,13 +110,13 @@ def train_linear_reg(threshold: float, save_train_dataset: bool = False):
     df = append_sqm_per_room(df)
     df = append_total_crime(df)
     df = append_total_rooms(df)
-    df = append_city_avg_price(df)
-    df = append_city_avg_price_per_sqm(df)
+    df = append_city_avg_price(df, True)
+    df = append_city_avg_price_per_sqm(df, True)
     df = append_property_type_dummies(df)
     df = append_tenure_dummies(df)
     df = append_epc_rating_dummies(df)
-    df = append_avg_price(df)
-    df = append_price_std(df)
+    df = append_avg_price(df, True)
+    df = append_price_std(df, True)
     df = df[df["city"] != "london"]
 
     df = df.drop(
