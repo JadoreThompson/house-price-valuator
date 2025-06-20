@@ -27,10 +27,10 @@ def prepare_dataset() -> pd.DataFrame:
     df["sqm"] = pd.to_numeric(df["sqm"])
     df["sold_date"] = pd.to_datetime(df["sold_date"])
     df["sold_date_unix_epoch"] = df["sold_date"].apply(lambda x: x.timestamp())
-    df["sold_year"] = df["sold_date"].apply(lambda x: x.date().year)
+    df["sold_year"] = df["sold_date"].apply(lambda x: int(x.date().year))
     df["sold_month"] = df["sold_date"].apply(lambda x: x.date().month)
     df["sold_day"] = df["sold_date"].apply(lambda x: x.date().day)
-    df["target"] = df.pop("price")
+    df["target"] = df["price"]
 
     return df
 
@@ -48,6 +48,7 @@ def get_train_test(
     Returns:
         Tuple of (X_train, X_test, y_train, y_test)
     """
+    df = df.drop(columns=["price"])
     train_size = round(len(df) * train_pct)
 
     train_df = df.iloc[:train_size]
