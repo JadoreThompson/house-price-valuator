@@ -1,17 +1,17 @@
 import os
-import warnings
 import numpy as np
 import pandas as pd
+import pickle
 import tensorflow as tf
+import warnings
 import ydf
 
+from pprint import pprint
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras import Sequential, layers
-from pprint import pprint
 
-from engine.config import MISC_FOLDER
 from .features import (
     append_avg_price,
     append_avg_price_per_sqm,
@@ -33,9 +33,16 @@ from .utils import (
     prepare_dataset,
     save_var_importances,
 )
+from ..config import MISC_FOLDER, MODELS_FOLDER
 
 
-def train_forest(threshold: float, save_train_dataset: bool = False):
+def train_forest(
+    threshold: float,
+    save_train_dataset: bool = False,
+    save_model: bool = False,
+    pickle_: bool = True,
+    fname: str = "forest_model.pkl",
+):
     df = prepare_dataset()
     df = append_sqm_per_bed(df, regional=True)
     df = append_sqm_per_room(df, True, True)
@@ -69,7 +76,7 @@ def train_forest(threshold: float, save_train_dataset: bool = False):
     if save_train_dataset:
         df = X_train.copy()
         df["target"] = y_train
-        df.to_csv("msc/train-forest.csv", index=False)
+        df.to_csv(os.path.join(MISC_FOLDER, "forest.csv"), index=False)
 
     train_df = X_train.copy()
     train_df["target"] = y_train
@@ -78,18 +85,36 @@ def train_forest(threshold: float, save_train_dataset: bool = False):
         "target", task=ydf.Task.REGRESSION, max_depth=100, num_trees=200
     )
     model = learner.train(pd.concat([train_df], ignore_index=True))
+
     save_var_importances(model.variable_importances())
+    if save_model:
+        model_path = os.path.join(MODELS_FOLDER, fname)
+
+        if pickle_:
+            with open(model_path, "wb") as f:
+                pickle.dump(model, f)
+        else:
+            model.save(model_path)
+
+        print(f"Model saved to {model_path}")
+
     return model, *calculate_success_rate(model, X_test, y_test, threshold)
 
 
-def train_linear_reg(threshold: float, save_train_dataset: bool = False):
+def train_linear_reg(
+    threshold: float,
+    save_train_dataset: bool = False,
+    save_model: bool = False,
+    pickle_: bool = True,
+    fname: str = "linear_regression_model.pkl",
+):
     df = prepare_dataset()
 
     df = append_sqm_per_bed(df, individual=True)
     df = append_sqm_per_room(df, individual=True)
     df = append_avg_price(df, regional=True)
     df = append_avg_price(df, expanding=True, regional=True)
-    df = append_avg_price_per_sqm(df, regional=True)
+
     df = append_price_std(df, False, False)
     df = append_total_crime(df)
     df = append_total_rooms(df)
@@ -119,13 +144,13 @@ def train_linear_reg(threshold: float, save_train_dataset: bool = False):
             "closest_school_name",
             "closest_poi_name",
             "crime_violence",
-            'num_pois',
-            'avg_distance_all',
-            'min_distance_school', 
+            "num_pois",
+            "avg_distance_all",
+            "min_distance_school",
         ]
     )
     df = df.dropna()
-    
+
     X_train, X_test, y_train, y_test = get_train_test(df)
 
     model = LinearRegression()
@@ -136,12 +161,27 @@ def train_linear_reg(threshold: float, save_train_dataset: bool = False):
         df["target"] = y_train
         df.to_csv(os.path.join(MISC_FOLDER, "train-lr.csv"), index=False)
 
+    if save_model:
+        model_path = os.path.join(MODELS_FOLDER, fname)
+
+        if pickle_:
+            with open(model_path, "wb") as f:
+                pickle.dump(model, f)
+        else:
+            if not model_path.endswith(".keras"):
+                raise ValueError("For Keras models, the file must end with '.keras'")
+            model.save(model_path)
+
+        print(f"Model saved to {model_path}")
+
     return model, *calculate_success_rate(model, X_test, y_test, threshold)
 
 
 def train_neural_net(
     threshold: float,
     save_train_dataset: bool = False,
+    save_model: bool = False,
+    *,
     epochs: int = 100,
     test_pct: float = 0.3,
 ) -> dict:
@@ -153,7 +193,6 @@ def train_neural_net(
     df = append_sqm_per_room(df, individual=True)
     df = append_avg_price(df, regional=True)
     df = append_avg_price(df, expanding=True, regional=True)
-    # df = append_avg_price_per_sqm(df, regional=True)
     df = append_price_std(df, False, False)
     df = append_total_crime(df)
     df = append_total_rooms(df)
@@ -241,6 +280,11 @@ def train_neural_net(
             msg = f"Error saving train dataset: {e}"
             warnings.warn(msg)
 
+    if save_model:
+        model_path = os.path.join(MODELS_FOLDER, "neural_net_model.h5")
+        model.save(model_path)
+        print(f"Model saved to {model_path}")
+
     return result
 
 
@@ -250,11 +294,14 @@ def train():
 
     for title, train_func, kwargs in (
         ("Random Forest", train_forest, {}),
-        ("Linear Regression", train_linear_reg, {}),
+        ("Linear Regression", train_linear_reg, {"save_model": True}),
         # ("Neural Network", train_neural_net, {"epochs": 300}),
     ):
         results.append(
-            (title, train_func(threshold=10_000, save_train_dataset=True, **kwargs))
+            (
+                title,
+                train_func(threshold=10_000, save_train_dataset=True, **kwargs),
+            )
         )
 
     for title, result in results:

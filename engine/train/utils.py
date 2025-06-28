@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from json import dump
 from typing import Any, Protocol, runtime_checkable
-from engine.config import DATASETS_FOLDER
+from ..config import DATASETS_FOLDER, MISC_FOLDER
 
 
 @runtime_checkable
@@ -11,6 +11,7 @@ class SupportsPredict(Protocol):
     """
     Protocol for models that implement a `predict` method.
     """
+
     def predict(*args, **kwargs) -> Any: ...
 
 
@@ -51,7 +52,7 @@ def get_train_test(
     """
     np.random.seed(random_state)
     indices = np.arange(len(df))
-    
+
     df = df.drop(columns=["price"])
     train_size = round(len(df) * train_pct)
 
@@ -104,7 +105,7 @@ def save_var_importances(importances) -> None:
     dump(
         importances,
         open(
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "msc", "vi.json"),
+            os.path.join(MISC_FOLDER, "vi.json"),
             "w",
         ),
     )
