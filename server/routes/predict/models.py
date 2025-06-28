@@ -45,6 +45,7 @@ class PredictRequest(BaseModel):
     property_type: PropertyType
     tenure: Optional[TenureType] = TenureType.FREEHOLD
     epc_rating: Optional[EPCRating] = EPCRating.D
+    price: Optional[float] = Field(None, gt=0)
 
     @model_validator(mode="before")
     def class_validator(cls, values):
@@ -60,3 +61,12 @@ class PredictRequest(BaseModel):
             raise ValueError("If lng is provided, lat must also be provided.")
 
         return values
+
+
+class PredictResponse(BaseModel):
+    price: float
+    score: Optional[float] = None
+    
+    @field_validator("score")
+    def validate_score(cls, v):
+        return round(v, 2) if v is not None else None

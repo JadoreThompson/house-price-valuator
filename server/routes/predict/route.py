@@ -1,6 +1,9 @@
+import pandas as pd
 from fastapi import APIRouter
+
+from config import LINEAR_REGRESSION_MODEL
 from .controller import fetch_crimes, fetch_lat_lng, get_features
-from .models import PredictRequest
+from .models import PredictRequest, PredictResponse
 
 route = APIRouter(prefix="/predict", tags=["predict"])
 
@@ -11,11 +14,17 @@ async def predict(body: PredictRequest):
 
     lat, lng = await fetch_lat_lng(body["postcode"])
     crime_data = await fetch_crimes(lat, lng)
-    features = get_features(body)
+    features = await get_features(body)
 
     body["lat"] = lat
     body["lng"] = lng
     body.update(features)
     body.update(crime_data)
 
-    return body
+    # pred = LINEAR_REGRESSION_MODEL.predict(pd.DataFrame([body]))
+    pred = 250_000.0
+
+    return PredictResponse(
+        price=pred,
+        score=abs(pred - body["price"]) / body["price"] if body["price"] else None,
+    )

@@ -1,3 +1,4 @@
+import json
 import os
 import numpy as np
 import pandas as pd
@@ -162,9 +163,19 @@ def train_linear_reg(
         df.to_csv(os.path.join(MISC_FOLDER, "train-lr.csv"), index=False)
 
     if save_model:
-        model_path = os.path.join(MODELS_FOLDER, fname)
+        folder = os.path.join(MODELS_FOLDER, "linear_reg")
+        if not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+
+        json.dump(
+            X_train.columns.tolist(), open(os.path.join(folder, "features.json"), "w")
+        )
+
+        model_path = os.path.join(folder, fname)
 
         if pickle_:
+            if not model_path.endswith(".pkl"):
+                raise ValueError("For pickle models, the file must end with '.pkl'")
             with open(model_path, "wb") as f:
                 pickle.dump(model, f)
         else:
