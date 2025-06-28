@@ -119,6 +119,9 @@ def train_linear_reg(threshold: float, save_train_dataset: bool = False):
             "closest_school_name",
             "closest_poi_name",
             "crime_violence",
+            'num_pois',
+            'avg_distance_all',
+            'min_distance_school', 
         ]
     )
     df = df.dropna()
@@ -150,7 +153,7 @@ def train_neural_net(
     df = append_sqm_per_room(df, individual=True)
     df = append_avg_price(df, regional=True)
     df = append_avg_price(df, expanding=True, regional=True)
-    df = append_avg_price_per_sqm(df, regional=True)
+    # df = append_avg_price_per_sqm(df, regional=True)
     df = append_price_std(df, False, False)
     df = append_total_crime(df)
     df = append_total_rooms(df)
