@@ -1,0 +1,62 @@
+{
+  "features": {
+    "tenure": "Leasehold",
+    "sqm": "56 sqm",
+    "epcRating": "EPC rating: C",
+    "propertyType": "Purpose built flat ",
+    "bedrooms": "2 beds",
+    "bathrooms": "1 bath",
+    "receptions": "1 reception"
+  },
+  "uprn": "5003846",
+  "address": {
+    "address": "93 Kiln Place, London, NW5 4AL",
+    "lat": 51.55371,
+    "lng": -0.15032
+  },
+  "nearbyPOIs": [
+    {
+      "distanceMiles": 0.1,
+      "lat": 51.555341,
+      "lng": -0.150766,
+      "name": "Gospel Oak"
+    },
+    {
+      "category": "State school",
+      "distanceMiles": 0.11297449990182333,
+      "lat": 51.55506454,
+      "lng": -0.15176531,
+      "name": "Gospel Oak Primary School",
+      "gender": "Mixed"
+    },
+    {
+      "category": "Independent school",
+      "distanceMiles": 0.1514761987617315,
+      "lat": 51.55227765,
+      "lng": -0.15296013,
+      "name": "La Petite Ecole Bilingue",
+      "gender": "Mixed"
+    },
+    {
+      "distanceMiles": 0.5,
+      "lat": 51.550304,
+      "lng": -0.140464,
+      "name": "Kentish Town"
+    }
+  ],
+  "soldDate": "2025-03-02T00:00:00.000Z",
+  "priceStr": "£480,000",
+  "price": 480000,
+  "crime": {
+    "antiSocial": 211,
+    "theft": 329,
+    "burglary": 82,
+    "criminalDamage": 41,
+    "drugs": 49,
+    "publicOrder": 47,
+    "robbery": 39,
+    "vehicle": 94,
+    "violence": 206,
+    "other": 9
+  }
+}

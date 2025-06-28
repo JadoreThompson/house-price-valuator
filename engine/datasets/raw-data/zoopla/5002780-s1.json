@@ -1,0 +1,60 @@
+{
+  "features": {
+    "tenure": "Leasehold",
+    "sqm": "78 sqm",
+    "epcRating": "EPC rating: C",
+    "propertyType": "Flat/Maisonette "
+  },
+  "uprn": "5002780",
+  "address": {
+    "address": "Flat 8, Rowstock, Oseney Crescent, London, NW5 2BA",
+    "lat": 51.5476068,
+    "lng": -0.1349658
+  },
+  "nearbyPOIs": [
+    {
+      "category": "State school",
+      "distanceMiles": 0.06735564274014753,
+      "lat": 51.54967474,
+      "lng": -0.13281464,
+      "name": "Torriano Primary School",
+      "gender": "Mixed"
+    },
+    {
+      "category": "State school",
+      "distanceMiles": 0.1995418826180108,
+      "lat": 51.54599022,
+      "lng": -0.13466741,
+      "name": "The Camden School for Girls",
+      "gender": "Girls"
+    },
+    {
+      "distanceMiles": 0.3,
+      "lat": 51.550036,
+      "lng": -0.139442,
+      "name": "Kentish Town"
+    },
+    {
+      "distanceMiles": 0.3,
+      "lat": 51.550304,
+      "lng": -0.140464,
+      "name": "Kentish Town"
+    }
+  ],
+  "soldDate": "2025-03-02T00:00:00.000Z",
+  "priceStr": "£188,784",
+  "price": 188784,
+  "crime": {
+    "antiSocial": 308,
+    "theft": 526,
+    "burglary": 84,
+    "criminalDamage": 68,
+    "drugs": 87,
+    "weaponPossession": 6,
+    "publicOrder": 81,
+    "robbery": 54,
+    "vehicle": 96,
+    "violence": 317,
+    "other": 18
+  }
+}

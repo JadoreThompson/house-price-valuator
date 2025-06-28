@@ -1,18 +1,14 @@
 import os
 from dotenv import load_dotenv
+from sqlalchemy.ext.asyncio import create_async_engine
+from urllib.parse import quote
 
 load_dotenv()
 
-DATASETS_FOLDER = os.path.join(os.path.dirname(__file__), "datasets")
-RAW_DATASETS_FOLDER = os.path.join(DATASETS_FOLDER, "raw-data")
-CLEANED_DATASETS_FOLDER = os.path.join(DATASETS_FOLDER, "cleaned-data")
-CLEANED_ZOOPLA_FOLDER = os.path.join(CLEANED_DATASETS_FOLDER, "zoopla")
+LAT_LNG_API = os.getenv("LAT_LNG_API", "https://api.postcodes.io/postcodes")
+CRIME_API = os.getenv("CRIME_API", "https://data.police.uk/api/crimes-street/all-crime")
 
-for path in (
-    DATASETS_FOLDER,
-    RAW_DATASETS_FOLDER,
-    CLEANED_DATASETS_FOLDER,
-    CLEANED_ZOOPLA_FOLDER,
-):
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
+DB_URL = f"postgresql+asyncpg://{os.getenv("DB_USER")}:{quote(os.getenv("DB_PASSWORD"))}@{os.getenv("DB_HOST")}:{os.getenv("DB_PORT")}/{os.getenv("DB_NAME")}"
+DB_ENGINE = create_async_engine(
+    DB_URL,
+)
